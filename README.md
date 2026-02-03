@@ -414,22 +414,6 @@ Authorization: Bearer {access_token}
 
 ---
 
-## 🎨 系统截图
-
-### 登录页面
-![登录页面](docs/screenshots/login.png)
-
-### 主控制台
-![主控制台](docs/screenshots/dashboard.png)
-
-### 教材管理
-![教材管理](docs/screenshots/textbooks.png)
-
-### 统计分析
-![统计分析](docs/screenshots/statistics.png)
-
----
-
 ## 🧪 测试
 
 ### 运行测试脚本
@@ -450,27 +434,6 @@ mysql -u root -p < sql/06_test_queries.sql
 - [x] 库存预警功能
 - [x] ISBN格式校验
 - [x] 数据完整性约束
-
----
-
-## 📝 开发日志
-
-### v1.0.0 (2024-01-20)
-
-**核心功能**
-- ✅ 完成数据库设计（8张核心表）
-- ✅ 实现触发器自动管理库存
-- ✅ 创建5个统计分析存储过程
-- ✅ 构建RESTful API（JWT认证）
-- ✅ 开发前端管理界面
-- ✅ 实现用户权限管理
-
-**技术优化**
-- ✅ 采用Flask应用工厂模式
-- ✅ 使用蓝图组织路由
-- ✅ DAO模式分离数据访问层
-- ✅ Marshmallow数据序列化
-- ✅ 统一错误处理和响应格式
 
 ---
 
@@ -503,10 +466,10 @@ mysql -u root -p < sql/06_test_queries.sql
 
 ## 👨‍💻 作者
 
-**Your Name**
+**wink-wink-wink555**
 
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Email: your.email@example.com
+- GitHub: [wink-wink-wink555](https://github.com/wink-wink-wink555)
+- Email: yfsun.jeff@gmail.com
 
 ---
 
@@ -522,9 +485,8 @@ mysql -u root -p < sql/06_test_queries.sql
 
 如有问题或建议，请通过以下方式联系：
 
-- 提交 [Issue](https://github.com/yourusername/TextbookHub/issues)
-- 发送邮件至：your.email@example.com
-- 项目讨论群：[加入群聊]
+- 提交 [Issue](https://github.com/wink-wink-wink555/TextbookHub/issues)
+- 发送邮件至：yfsun.jeff@gmail.com
 
 ---
 
@@ -532,6 +494,7 @@ mysql -u root -p < sql/06_test_queries.sql
 
 **⭐ 如果这个项目对您有帮助，请给一个 Star！⭐**
 
-Made with ❤️ for Database Course Design
+Made with ❤️ by wink-wink-wink555 for Database Course Design
 
 </div>
+
