@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统计报表 - 高校教材管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <h2>教材管理系统</h2>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <div class="user-details">
+                    <div class="user-name" id="userName">加载中...</div>
+                    <div class="user-role" id="userRole">-</div>
+                </div>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/dashboard"><i class="fas fa-home"></i> 仪表盘</a></li>
+                <li><a href="/textbooks"><i class="fas fa-book"></i> 教材管理</a></li>
+                <li><a href="/publishers"><i class="fas fa-building"></i> 出版社管理</a></li>
+                <li><a href="/orders"><i class="fas fa-clipboard-list"></i> 订单管理</a></li>
+                <li><a href="/statistics" class="active"><i class="fas fa-chart-bar"></i> 统计报表</a></li>
+                <li><a href="#" onclick="logout()" class="logout-link"><i class="fas fa-sign-out-alt"></i> 退出登录</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1><i class="fas fa-chart-bar" style="margin-right: 12px; color: var(--primary-color);"></i>统计报表</h1>
+            </div>
+
+            <!-- 按类型统计 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-pie"></i> 按教材类型统计</h3>
+                    <button class="btn btn-sm btn-secondary" onclick="exportData('typeStats')">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table id="typeStatsTable">
+                            <thead>
+                                <tr>
+                                    <th>类型名称</th>
+                                    <th>类型编码</th>
+                                    <th>教材种类</th>
+                                    <th>订购总量</th>
+                                    <th>到货总量</th>
+                                    <th>发放总量</th>
+                                    <th>当前库存</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="7" class="text-center">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 按出版社统计 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-building"></i> 按出版社统计</h3>
+                    <button class="btn btn-sm btn-secondary" onclick="exportData('publisherStats')">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table id="publisherStatsTable">
+                            <thead>
+                                <tr>
+                                    <th>出版社名称</th>
+                                    <th>教材种类</th>
+                                    <th>订购总量</th>
+                                    <th>到货总量</th>
+                                    <th>发放总量</th>
+                                    <th>当前库存</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="6" class="text-center">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 库存预警 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-bell"></i> 库存预警</h3>
+                    <button class="btn btn-sm btn-secondary" onclick="exportData('warnings')">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table id="warningsTable">
+                            <thead>
+                                <tr>
+                                    <th>ISBN</th>
+                                    <th>教材名称</th>
+                                    <th>出版社</th>
+                                    <th>类型</th>
+                                    <th>当前库存</th>
+                                    <th>最低预警值</th>
+                                    <th>最高预警值</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="8" class="text-center">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        if (!checkLogin()) window.location.href = '/';
+        
+        const user = getUserInfo();
+        if (user) {
+            document.getElementById('userName').textContent = user.real_name || user.username;
+            document.getElementById('userRole').textContent = user.role;
+            document.getElementById('userAvatar').textContent = (user.real_name || user.username).charAt(0);
+        }
+
+        let typeStatsData = [];
+        let publisherStatsData = [];
+        let warningsData = [];
+
+        async function loadTypeStats() {
+            // 教师及以上可以查看
+            if (!isTeacherOrAbove()) {
+                const tbody = document.querySelector('#typeStatsTable tbody');
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">您没有权限查看此报表，需要教师及以上角色</td></tr>';
+                return;
+            }
+            
+            try {
+                const result = await api.getStatisticsByType();
+                if (result.code === 200) {
+                    typeStatsData = result.data;
+                    const tbody = document.querySelector('#typeStatsTable tbody');
+                    if (result.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="text-center">暂无数据</td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = result.data.map(item => `
+                        <tr>
+                            <td><strong>${item.type_name}</strong></td>
+                            <td>${item.type_code}</td>
+                            <td>${item.textbook_count}</td>
+                            <td>${item.order_quantity}</td>
+                            <td>${item.arrived_quantity}</td>
+                            <td>${item.issued_quantity}</td>
+                            <td><strong>${item.current_quantity}</strong></td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                if (error.message && error.message.includes('403')) {
+                    const tbody = document.querySelector('#typeStatsTable tbody');
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">您没有权限查看此报表</td></tr>';
+                } else {
+                    handleError(error, '加载类型统计失败');
+                }
+            }
+        }
+
+        async function loadPublisherStats() {
+            // 教师及以上可以查看
+            if (!isTeacherOrAbove()) {
+                const tbody = document.querySelector('#publisherStatsTable tbody');
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">您没有权限查看此报表，需要教师及以上角色</td></tr>';
+                return;
+            }
+            
+            try {
+                const result = await api.getStatisticsByPublisher();
+                if (result.code === 200) {
+                    publisherStatsData = result.data;
+                    const tbody = document.querySelector('#publisherStatsTable tbody');
+                    if (result.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无数据</td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = result.data.map(item => `
+                        <tr>
+                            <td><strong>${item.publisher_name}</strong></td>
+                            <td>${item.textbook_count}</td>
+                            <td>${item.order_quantity}</td>
+                            <td>${item.arrived_quantity}</td>
+                            <td>${item.issued_quantity}</td>
+                            <td><strong>${item.current_quantity}</strong></td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                if (error.message && error.message.includes('403')) {
+                    const tbody = document.querySelector('#publisherStatsTable tbody');
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">您没有权限查看此报表</td></tr>';
+                } else {
+                    handleError(error, '加载出版社统计失败');
+                }
+            }
+        }
+
+        async function loadWarnings() {
+            // 只有管理员和仓库管理员可以查看库存预警
+            if (!isAdminOrWarehouse()) {
+                const tbody = document.querySelector('#warningsTable tbody');
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">您没有权限查看库存预警，需要管理员或仓库管理员角色</td></tr>';
+                return;
+            }
+            
+            try {
+                const result = await api.getInventoryWarnings();
+                if (result.code === 200) {
+                    warningsData = result.data;
+                    const tbody = document.querySelector('#warningsTable tbody');
+                    if (result.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" class="text-center">暂无预警</td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = result.data.map(item => `
+                        <tr>
+                            <td>${item.isbn}</td>
+                            <td>${item.textbook_name}</td>
+                            <td>${item.publisher_name}</td>
+                            <td>${item.type_name}</td>
+                            <td><strong>${item.current_quantity}</strong></td>
+                            <td>${item.min_quantity}</td>
+                            <td>${item.max_quantity}</td>
+                            <td>${createStatusBadge(item.status)}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                if (error.message && error.message.includes('403')) {
+                    const tbody = document.querySelector('#warningsTable tbody');
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">您没有权限查看库存预警</td></tr>';
+                } else {
+                    handleError(error, '加载库存预警失败');
+                }
+            }
+        }
+
+        function exportData(type) {
+            let data, filename;
+            switch(type) {
+                case 'typeStats':
+                    if (!isTeacherOrAbove()) {
+                        showMessage('您没有权限导出此报表', 'warning');
+                        return;
+                    }
+                    data = typeStatsData.map(item => ({
+                        '类型名称': item.type_name,
+                        '类型编码': item.type_code,
+                        '教材种类': item.textbook_count,
+                        '订购总量': item.order_quantity,
+                        '到货总量': item.arrived_quantity,
+                        '发放总量': item.issued_quantity,
+                        '当前库存': item.current_quantity
+                    }));
+                    filename = '按类型统计';
+                    break;
+                case 'publisherStats':
+                    if (!isTeacherOrAbove()) {
+                        showMessage('您没有权限导出此报表', 'warning');
+                        return;
+                    }
+                    data = publisherStatsData.map(item => ({
+                        '出版社名称': item.publisher_name,
+                        '教材种类': item.textbook_count,
+                        '订购总量': item.order_quantity,
+                        '到货总量': item.arrived_quantity,
+                        '发放总量': item.issued_quantity,
+                        '当前库存': item.current_quantity
+                    }));
+                    filename = '按出版社统计';
+                    break;
+                case 'warnings':
+                    if (!isAdminOrWarehouse()) {
+                        showMessage('您没有权限导出库存预警数据', 'warning');
+                        return;
+                    }
+                    data = warningsData.map(item => ({
+                        'ISBN': item.isbn,
+                        '教材名称': item.textbook_name,
+                        '出版社': item.publisher_name,
+                        '类型': item.type_name,
+                        '当前库存': item.current_quantity,
+                        '最低预警值': item.min_quantity,
+                        '最高预警值': item.max_quantity,
+                        '状态': item.status
+                    }));
+                    filename = '库存预警';
+                    break;
+            }
+            exportToCSV(data, filename);
+        }
+
+        loadTypeStats();
+        loadPublisherStats();
+        loadWarnings();
+        
+        // 根据权限禁用导出按钮
+        window.addEventListener('load', function() {
+            // 检查普通用户，隐藏所有内容
+            if (!isTeacherOrAbove()) {
+                document.querySelector('.page-header').insertAdjacentHTML('afterend', 
+                    '<div class="permission-notice">' +
+                    '<i class="fas fa-info-circle"></i>' +
+                    '提示：您当前是普通用户角色，统计报表功能需要教师及以上角色才能访问。' +
+                    '</div>'
+                );
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教材管理 - 高校教材管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <h2>教材管理系统</h2>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <div class="user-details">
+                    <div class="user-name" id="userName">加载中...</div>
+                    <div class="user-role" id="userRole">-</div>
+                </div>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/dashboard"><i class="fas fa-home"></i> 仪表盘</a></li>
+                <li><a href="/textbooks" class="active"><i class="fas fa-book"></i> 教材管理</a></li>
+                <li><a href="/publishers"><i class="fas fa-building"></i> 出版社管理</a></li>
+                <li><a href="/orders"><i class="fas fa-clipboard-list"></i> 订单管理</a></li>
+                <li><a href="/statistics"><i class="fas fa-chart-bar"></i> 统计报表</a></li>
+                <li><a href="#" onclick="logout()" class="logout-link"><i class="fas fa-sign-out-alt"></i> 退出登录</a></li>
+            </ul>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1><i class="fas fa-book" style="margin-right: 12px; color: var(--primary-color);"></i>教材管理</h1>
+                <button class="btn btn-primary" onclick="showAddModal()">
+                    <i class="fas fa-plus"></i> 添加教材
+                </button>
+            </div>
+
+            <!-- 搜索栏 -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="search-bar">
+                        <input type="text" id="searchKeyword" placeholder="搜索教材名称、作者或ISBN..." onkeyup="searchTextbooks()">
+                        <select id="filterPublisher" onchange="searchTextbooks()">
+                            <option value="">所有出版社</option>
+                        </select>
+                        <select id="filterType" onchange="searchTextbooks()">
+                            <option value="">所有类型</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="resetSearch()">
+                            <i class="fas fa-redo"></i> 重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 教材列表 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-list"></i> 教材列表</h3>
+                    <span id="totalCount">共 0 本教材</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table id="textbooksTable">
+                            <thead>
+                                <tr>
+                                    <th>ISBN</th>
+                                    <th>教材名称</th>
+                                    <th>作者</th>
+                                    <th>出版社</th>
+                                    <th>类型</th>
+                                    <th>版次</th>
+                                    <th>价格</th>
+                                    <th>库存</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="9" class="text-center">加载中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="pagination" class="mt-20"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 添加/编辑教材模态框 -->
+    <div id="textbookModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle"><i class="fas fa-book"></i> 添加教材</h3>
+                <span class="close" onclick="hideModal('textbookModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="textbookForm">
+                    <input type="hidden" id="textbookId">
+                    <div class="form-group">
+                        <label for="isbn">ISBN <span class="required">*</span></label>
+                        <input type="text" id="isbn" class="form-control" placeholder="ISBN + 10位数字，如：ISBN9787040001" required>
+                        <div class="form-help">格式：ISBN开头 + 10位数字</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="textbook_name">教材名称 <span class="required">*</span></label>
+                        <input type="text" id="textbook_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="author">作者</label>
+                        <input type="text" id="author" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="publisher_id">出版社 <span class="required">*</span></label>
+                        <select id="publisher_id" class="form-control" required>
+                            <option value="">请选择出版社</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="type_id">教材类型 <span class="required">*</span></label>
+                        <select id="type_id" class="form-control" required>
+                            <option value="">请选择类型</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edition">版次</label>
+                        <input type="text" id="edition" class="form-control" placeholder="如：第1版">
+                    </div>
+                    <div class="form-group">
+                        <label for="publication_date">出版日期</label>
+                        <input type="date" id="publication_date" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="price">价格 <span class="required">*</span></label>
+                        <input type="number" id="price" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">描述</label>
+                        <textarea id="description" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('textbookModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveTextbook()">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 直接入库模态框 -->
+    <div id="directStockInModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-warehouse"></i> 直接入库</h3>
+                <span class="close" onclick="hideModal('directStockInModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="directStockInForm">
+                    <input type="hidden" id="direct_textbook_id">
+                    <div class="form-group">
+                        <label>教材名称</label>
+                        <input type="text" id="direct_textbook_name" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>当前库存</label>
+                        <input type="text" id="direct_current_stock" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>入库数量 <span class="required">*</span></label>
+                        <input type="number" id="direct_quantity" class="form-control" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>质量状态</label>
+                        <select id="direct_quality" class="form-control">
+                            <option value="合格">合格</option>
+                            <option value="部分合格">部分合格</option>
+                            <option value="不合格">不合格</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>备注</label>
+                        <textarea id="direct_remarks" class="form-control" rows="2" placeholder="直接入库原因说明"></textarea>
+                    </div>
+                </form>
+                <div class="tip-box">
+                    <i class="fas fa-lightbulb"></i>
+                    <small><strong>提示：</strong>直接入库会自动创建一个已完成的采购订单，方便追溯入库来源。</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('directStockInModal')">取消</button>
+                <button class="btn btn-primary" onclick="submitDirectStockIn()">
+                    <i class="fas fa-check"></i> 确认入库
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        if (!checkLogin()) window.location.href = '/';
+
+        const user = getUserInfo();
+        if (user) {
+            document.getElementById('userName').textContent = user.real_name || user.username;
+            document.getElementById('userRole').textContent = user.role;
+            document.getElementById('userAvatar').textContent = (user.real_name || user.username).charAt(0);
+        }
+
+        let currentPage = 1;
+        const perPage = 10;
+
+        // 加载教材列表
+        async function loadTextbooks() {
+            try {
+                const keyword = document.getElementById('searchKeyword').value;
+                const publisherId = document.getElementById('filterPublisher').value;
+                const typeId = document.getElementById('filterType').value;
+
+                const result = await api.getTextbooks(currentPage, perPage, keyword, publisherId, typeId);
+                
+                if (result.code === 200) {
+                    const { items, pagination } = result.data;
+                    const tbody = document.querySelector('#textbooksTable tbody');
+                    
+                    document.getElementById('totalCount').textContent = `共 ${pagination.total} 本教材`;
+                    
+                    if (items.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="9" class="text-center">暂无数据</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = items.map(item => `
+                        <tr>
+                            <td>${item.isbn}</td>
+                            <td><strong>${item.textbook_name}</strong></td>
+                            <td>${item.author || '-'}</td>
+                            <td>${item.publisher_name || '-'}</td>
+                            <td>${item.type_name || '-'}</td>
+                            <td>${item.edition || '-'}</td>
+                            <td>${formatMoney(item.price)}</td>
+                            <td><strong>${item.current_quantity || 0}</strong></td>
+                            <td>${getActionButtons(item)}</td>
+                        </tr>
+                    `).join('');
+
+                    // 分页
+                    const paginationDiv = document.getElementById('pagination');
+                    paginationDiv.innerHTML = '';
+                    paginationDiv.appendChild(createPagination(pagination.page, pagination.pages, (page) => {
+                        currentPage = page;
+                        loadTextbooks();
+                    }));
+                }
+            } catch (error) {
+                handleError(error, '加载教材列表失败');
+            }
+        }
+
+        // 加载出版社和类型下拉框
+        async function loadFilters() {
+            try {
+                const [publishers, types] = await Promise.all([
+                    api.getPublishers(),
+                    api.getTextbookTypes()
+                ]);
+
+                if (publishers.code === 200) {
+                    const publisherSelects = document.querySelectorAll('#filterPublisher, #publisher_id');
+                    publisherSelects.forEach(select => {
+                        const isFilter = select.id === 'filterPublisher';
+                        select.innerHTML = (isFilter ? '<option value="">所有出版社</option>' : '<option value="">请选择出版社</option>') +
+                            publishers.data.items.map(p => `<option value="${p.publisher_id}">${p.publisher_name}</option>`).join('');
+                    });
+                }
+
+                if (types.code === 200) {
+                    const typeSelects = document.querySelectorAll('#filterType, #type_id');
+                    typeSelects.forEach(select => {
+                        const isFilter = select.id === 'filterType';
+                        select.innerHTML = (isFilter ? '<option value="">所有类型</option>' : '<option value="">请选择类型</option>') +
+                            types.data.map(t => `<option value="${t.type_id}">${t.type_name}</option>`).join('');
+                    });
+                }
+            } catch (error) {
+                handleError(error, '加载筛选条件失败');
+            }
+        }
+
+        // 搜索
+        const searchTextbooks = debounce(() => {
+            currentPage = 1;
+            loadTextbooks();
+        }, 500);
+
+        // 重置搜索
+        function resetSearch() {
+            document.getElementById('searchKeyword').value = '';
+            document.getElementById('filterPublisher').value = '';
+            document.getElementById('filterType').value = '';
+            currentPage = 1;
+            loadTextbooks();
+        }
+
+        // 显示添加模态框（需要管理员权限）
+        function showAddModal() {
+            checkPermissionBeforeAction(
+                canManageBasicData,
+                () => {
+                    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-book"></i> 添加教材';
+                    document.getElementById('textbookForm').reset();
+                    document.getElementById('textbookId').value = '';
+                    showModal('textbookModal');
+                },
+                '只有管理员可以添加教材'
+            );
+        }
+
+        // 编辑教材（需要管理员权限）
+        async function editTextbook(id) {
+            checkPermissionBeforeAction(
+                canManageBasicData,
+                async () => {
+                    try {
+                        const result = await api.getTextbook(id);
+                        if (result.code === 200) {
+                            const data = result.data;
+                            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit"></i> 编辑教材';
+                            document.getElementById('textbookId').value = id;
+                            document.getElementById('isbn').value = data.isbn;
+                            document.getElementById('textbook_name').value = data.textbook_name;
+                            document.getElementById('author').value = data.author || '';
+                            document.getElementById('publisher_id').value = data.publisher_id;
+                            document.getElementById('type_id').value = data.type_id;
+                            document.getElementById('edition').value = data.edition || '';
+                            document.getElementById('publication_date').value = data.publication_date || '';
+                            document.getElementById('price').value = data.price;
+                            document.getElementById('description').value = data.description || '';
+                            showModal('textbookModal');
+                        }
+                    } catch (error) {
+                        handleError(error, '加载教材信息失败');
+                    }
+                },
+                '只有管理员可以编辑教材'
+            );
+        }
+
+        // 保存教材
+        async function saveTextbook() {
+            const id = document.getElementById('textbookId').value;
+            const isbn = document.getElementById('isbn').value;
+
+            if (!validateISBN(isbn)) {
+                showMessage('ISBN格式错误，必须是ISBN开头后跟10位数字', 'error');
+                return;
+            }
+
+            const data = {
+                isbn: isbn,
+                textbook_name: document.getElementById('textbook_name').value,
+                author: document.getElementById('author').value || null,
+                publisher_id: parseInt(document.getElementById('publisher_id').value),
+                type_id: parseInt(document.getElementById('type_id').value),
+                edition: document.getElementById('edition').value || null,
+                publication_date: document.getElementById('publication_date').value || null,
+                price: parseFloat(document.getElementById('price').value),
+                description: document.getElementById('description').value || null
+            };
+
+            try {
+                const result = id ? await api.updateTextbook(id, data) : await api.createTextbook(data);
+                if (result.code === 200 || result.code === 201) {
+                    showMessage(id ? '更新成功' : '添加成功', 'success');
+                    hideModal('textbookModal');
+                    loadTextbooks();
+                } else {
+                    showMessage(result.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                handleError(error, '保存失败');
+            }
+        }
+
+        // 删除教材（需要管理员权限）
+        async function deleteTextbook(id, name) {
+            checkPermissionBeforeAction(
+                canManageBasicData,
+                async () => {
+                    if (!confirmAction(`确定要删除教材"${name}"吗？`)) return;
+
+                    try {
+                        const result = await api.deleteTextbook(id);
+                        if (result.code === 200) {
+                            showMessage('删除成功', 'success');
+                            loadTextbooks();
+                        } else {
+                            showMessage(result.message || '删除失败', 'error');
+                        }
+                    } catch (error) {
+                        handleError(error, '删除失败');
+                    }
+                },
+                '只有管理员可以删除教材'
+            );
+        }
+
+        // 根据权限动态生成操作按钮
+        function getActionButtons(item) {
+            let buttons = [];
+            
+            // 入库按钮：仓库管理员和管理员可以直接入库
+            if (isAdminOrWarehouse()) {
+                buttons.push(`<button class="btn btn-sm btn-success" onclick="showDirectStockInModal(${item.textbook_id}, '${item.textbook_name}', ${item.current_quantity || 0})"><i class="fas fa-box"></i> 入库</button>`);
+            }
+            
+            // 编辑和删除按钮：只有管理员可以
+            if (canManageBasicData()) {
+                buttons.push(`<button class="btn btn-sm btn-secondary" onclick="editTextbook(${item.textbook_id})"><i class="fas fa-edit"></i></button>`);
+                buttons.push(`<button class="btn btn-sm btn-danger" onclick="deleteTextbook(${item.textbook_id}, '${item.textbook_name}')"><i class="fas fa-trash"></i></button>`);
+            }
+            
+            return buttons.length > 0 ? buttons.join(' ') : '<span class="view-only">查看</span>';
+        }
+
+        // 显示直接入库模态框
+        function showDirectStockInModal(textbookId, textbookName, currentQuantity) {
+            document.getElementById('direct_textbook_id').value = textbookId;
+            document.getElementById('direct_textbook_name').value = textbookName;
+            document.getElementById('direct_current_stock').value = currentQuantity;
+            document.getElementById('direct_quantity').value = '';
+            document.getElementById('direct_quality').value = '合格';
+            document.getElementById('direct_remarks').value = '';
+            showModal('directStockInModal');
+        }
+
+        // 提交直接入库
+        async function submitDirectStockIn() {
+            const textbookId = parseInt(document.getElementById('direct_textbook_id').value);
+            const quantity = parseInt(document.getElementById('direct_quantity').value);
+            
+            if (!quantity || quantity <= 0) {
+                showMessage('请输入有效的入库数量', 'error');
+                return;
+            }
+            
+            const data = {
+                textbook_id: textbookId,
+                quantity: quantity,
+                quality_status: document.getElementById('direct_quality').value,
+                remarks: document.getElementById('direct_remarks').value || '直接入库'
+            };
+            
+            try {
+                const result = await api.directStockIn(data);
+                if (result.code === 201) {
+                    showMessage('入库成功，库存已更新', 'success');
+                    hideModal('directStockInModal');
+                    loadTextbooks();  // 刷新教材列表以显示新库存
+                } else {
+                    showMessage(result.message || '入库失败', 'error');
+                }
+            } catch (error) {
+                handleError(error, '入库失败');
+            }
+        }
+
+        // 初始化
+        loadFilters();
+        loadTextbooks();
+        
+        // 应用权限控制到页面元素
+        window.addEventListener('load', function() {
+            // 隐藏"添加教材"按钮（如果没有权限）
+            if (!canManageBasicData()) {
+                const addButton = document.querySelector('.page-header .btn-primary');
+                if (addButton) {
+                    addButton.style.opacity = '0.5';
+                    addButton.style.cursor = 'not-allowed';
+                    addButton.title = '只有管理员可以添加教材';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

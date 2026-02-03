@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单管理 - 高校教材管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <h2>教材管理系统</h2>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <div class="user-details">
+                    <div class="user-name" id="userName">加载中...</div>
+                    <div class="user-role" id="userRole">-</div>
+                </div>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/dashboard"><i class="fas fa-home"></i> 仪表盘</a></li>
+                <li><a href="/textbooks"><i class="fas fa-book"></i> 教材管理</a></li>
+                <li><a href="/publishers"><i class="fas fa-building"></i> 出版社管理</a></li>
+                <li><a href="/orders" class="active"><i class="fas fa-clipboard-list"></i> 订单管理</a></li>
+                <li><a href="/statistics"><i class="fas fa-chart-bar"></i> 统计报表</a></li>
+                <li><a href="#" onclick="logout()" class="logout-link"><i class="fas fa-sign-out-alt"></i> 退出登录</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1><i class="fas fa-clipboard-list" style="margin-right: 12px; color: var(--primary-color);"></i>订单管理</h1>
+                <button class="btn btn-primary" onclick="showAddModal()">
+                    <i class="fas fa-plus"></i> 创建订单
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="search-bar">
+                        <input type="text" id="searchKeyword" placeholder="搜索订单编号或订购人..." onkeyup="searchOrders()">
+                        <select id="filterStatus" onchange="searchOrders()">
+                            <option value="">所有状态</option>
+                            <option value="待审核">待审核</option>
+                            <option value="已审核">已审核</option>
+                            <option value="已订购">已订购</option>
+                            <option value="部分到货">部分到货</option>
+                            <option value="已到货">已到货</option>
+                            <option value="已发放">已发放</option>
+                            <option value="已取消">已取消</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="resetSearch()">
+                            <i class="fas fa-redo"></i> 重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-list"></i> 订单列表</h3>
+                    <span id="totalCount">共 0 个订单</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>订单编号</th>
+                                    <th>教材名称</th>
+                                    <th>订购数量</th>
+                                    <th>已到货</th>
+                                    <th>订购日期</th>
+                                    <th>订购人</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTable">
+                                <tr><td colspan="8" class="text-center">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="pagination" class="mt-20"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 入库模态框 -->
+    <div id="stockInModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-warehouse"></i> 订单入库</h3>
+                <span class="close" onclick="hideModal('stockInModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="stockInForm">
+                    <input type="hidden" id="stockIn_order_id">
+                    <input type="hidden" id="stockIn_textbook_id">
+                    <div class="form-group">
+                        <label>订单编号</label>
+                        <input type="text" id="stockIn_order_no" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>教材名称</label>
+                        <input type="text" id="stockIn_textbook_name" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>订购数量 / 已到货</label>
+                        <input type="text" id="stockIn_order_info" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>本次入库数量 <span class="required">*</span></label>
+                        <input type="number" id="stockIn_quantity" class="form-control" min="1" required>
+                        <div class="form-help">剩余可入库：<span id="stockIn_remaining">0</span></div>
+                    </div>
+                    <div class="form-group">
+                        <label>入库日期 <span class="required">*</span></label>
+                        <input type="date" id="stockIn_date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>质量状态</label>
+                        <select id="stockIn_quality" class="form-control">
+                            <option value="合格">合格</option>
+                            <option value="部分合格">部分合格</option>
+                            <option value="不合格">不合格</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>备注</label>
+                        <textarea id="stockIn_remarks" class="form-control" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('stockInModal')">取消</button>
+                <button class="btn btn-primary" onclick="submitStockIn()">
+                    <i class="fas fa-check"></i> 确认入库
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建订单模态框 -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle"><i class="fas fa-file-alt"></i> 创建订单</h3>
+                <span class="close" onclick="hideModal('orderModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="orderForm">
+                    <div class="form-group">
+                        <label>教材 <span class="required">*</span></label>
+                        <select id="textbook_id" class="form-control" required>
+                            <option value="">请选择教材</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>订购数量 <span class="required">*</span></label>
+                        <input type="number" id="order_quantity" class="form-control" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>订购日期 <span class="required">*</span></label>
+                        <input type="date" id="order_date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>预计到货日期</label>
+                        <input type="date" id="expected_date" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>订购人 <span class="required">*</span></label>
+                        <select id="order_person" class="form-control" required>
+                            <option value="">请选择订购人</option>
+                        </select>
+                        <div class="form-help" id="orderPersonHint">加载中...</div>
+                    </div>
+                    <div class="form-group">
+                        <label>备注</label>
+                        <textarea id="remarks" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('orderModal')">取消</button>
+                <button class="btn btn-primary" onclick="saveOrder()">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        if (!checkLogin()) window.location.href = '/';
+        
+        const user = getUserInfo();
+        if (user) {
+            document.getElementById('userName').textContent = user.real_name || user.username;
+            document.getElementById('userRole').textContent = user.role;
+            document.getElementById('userAvatar').textContent = (user.real_name || user.username).charAt(0);
+        }
+
+        let currentPage = 1;
+        const perPage = 10;
+        let availableUsers = []; // 存储可选择的用户列表
+
+        // 加载可选择的订购人列表
+        async function loadAvailableUsers() {
+            try {
+                const result = await api.getUsers();
+                if (result.code === 200) {
+                    availableUsers = result.data;
+                    
+                    // 更新提示信息
+                    const hintSpan = document.getElementById('orderPersonHint');
+                    if (user.role === '管理员' || user.role === '仓库管理员') {
+                        hintSpan.textContent = '管理员可以为所有用户创建订单';
+                    } else if (user.role === '教师') {
+                        hintSpan.textContent = '教师可以为自己或普通用户创建订单';
+                    } else {
+                        hintSpan.textContent = '您只能为自己创建订单';
+                    }
+                }
+            } catch (error) {
+                console.error('加载用户列表失败:', error);
+            }
+        }
+
+        async function loadOrders() {
+            try {
+                const keyword = document.getElementById('searchKeyword').value;
+                const status = document.getElementById('filterStatus').value;
+                const result = await api.getPurchaseOrders(currentPage, perPage, status, keyword);
+                
+                if (result.code === 200) {
+                    const { items, pagination } = result.data;
+                    document.getElementById('totalCount').textContent = `共 ${pagination.total} 个订单`;
+                    
+                    const tbody = document.getElementById('ordersTable');
+                    if (items.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" class="text-center">暂无数据</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = items.map(item => `
+                        <tr>
+                            <td><strong>${item.order_no}</strong></td>
+                            <td>${item.textbook_name || '-'}</td>
+                            <td>${item.order_quantity}</td>
+                            <td>${item.arrived_quantity}</td>
+                            <td>${formatDate(item.order_date)}</td>
+                            <td>${item.order_person || '-'}</td>
+                            <td>${createStatusBadge(item.order_status)}</td>
+                            <td>${getActionButtons(item)}</td>
+                        </tr>
+                    `).join('');
+
+                    const paginationDiv = document.getElementById('pagination');
+                    paginationDiv.innerHTML = '';
+                    if (pagination.pages > 1) {
+                        paginationDiv.appendChild(createPagination(pagination.page, pagination.pages, (page) => {
+                            currentPage = page;
+                            loadOrders();
+                        }));
+                    }
+                }
+            } catch (error) {
+                handleError(error, '加载订单列表失败');
+            }
+        }
+
+        async function loadTextbooks() {
+            try {
+                const result = await api.getTextbooks(1, 100);
+                if (result.code === 200) {
+                    const select = document.getElementById('textbook_id');
+                    select.innerHTML = '<option value="">请选择教材</option>' +
+                        result.data.items.map(t => `<option value="${t.textbook_id}">${t.textbook_name} (${t.isbn})</option>`).join('');
+                }
+            } catch (error) {
+                console.error('加载教材列表失败:', error);
+            }
+        }
+
+        const searchOrders = debounce(() => {
+            currentPage = 1;
+            loadOrders();
+        }, 500);
+
+        function resetSearch() {
+            document.getElementById('searchKeyword').value = '';
+            document.getElementById('filterStatus').value = '';
+            currentPage = 1;
+            loadOrders();
+        }
+
+        function showAddModal() {
+            checkPermissionBeforeAction(
+                canCreateOrder,
+                () => {
+                    document.getElementById('orderForm').reset();
+                    document.getElementById('order_date').valueAsDate = new Date();
+                    
+                    // 填充订购人下拉框
+                    const orderPersonSelect = document.getElementById('order_person');
+                    orderPersonSelect.innerHTML = '<option value="">请选择订购人</option>';
+                    
+                    availableUsers.forEach(u => {
+                        const option = document.createElement('option');
+                        option.value = u.username;
+                        option.textContent = `${u.real_name || u.username} (${u.role})`;
+                        option.setAttribute('data-user-id', u.user_id);
+                        orderPersonSelect.appendChild(option);
+                    });
+                    
+                    // 如果是普通用户，自动选择自己
+                    if (user.role === '普通用户' && availableUsers.length > 0) {
+                        orderPersonSelect.value = user.username;
+                        orderPersonSelect.disabled = true;
+                    }
+                    
+                    showModal('orderModal');
+                },
+                '您没有权限创建订单'
+            );
+        }
+
+        async function saveOrder() {
+            const data = {
+                textbook_id: parseInt(document.getElementById('textbook_id').value),
+                order_quantity: parseInt(document.getElementById('order_quantity').value),
+                order_date: document.getElementById('order_date').value,
+                expected_date: document.getElementById('expected_date').value || null,
+                order_person: document.getElementById('order_person').value || null,
+                remarks: document.getElementById('remarks').value || null
+            };
+
+            try {
+                const result = await api.createPurchaseOrder(data);
+                if (result.code === 201) {
+                    showMessage('订单创建成功', 'success');
+                    hideModal('orderModal');
+                    loadOrders();
+                } else {
+                    showMessage(result.message || '创建失败', 'error');
+                }
+            } catch (error) {
+                handleError(error, '创建失败');
+            }
+        }
+
+        async function approveOrder(id) {
+            checkPermissionBeforeAction(
+                isAdminOrWarehouse,
+                async () => {
+                    if (!confirmAction('确定要审核通过这个订单吗？')) return;
+                    try {
+                        const result = await api.approvePurchaseOrder(id, user.username);
+                        if (result.code === 200) {
+                            showMessage('审核成功', 'success');
+                            loadOrders();
+                        } else {
+                            showMessage(result.message || '审核失败', 'error');
+                        }
+                    } catch (error) {
+                        handleError(error, '审核失败');
+                    }
+                },
+                '只有管理员和仓库管理员可以审核订单'
+            );
+        }
+
+        async function cancelOrder(id) {
+            const reason = prompt('请输入取消原因：');
+            if (!reason) return;
+            try {
+                const result = await api.cancelPurchaseOrder(id, reason);
+                if (result.code === 200) {
+                    showMessage('取消成功', 'success');
+                    loadOrders();
+                } else {
+                    showMessage(result.message || '取消失败', 'error');
+                }
+            } catch (error) {
+                handleError(error, '取消失败');
+            }
+        }
+
+        // 发放订单（将已到货的书籍发给客户，扣减库存）
+        async function deliverOrder(id, arrivedQuantity, orderQuantity, isPartial) {
+            let confirmMessage = '';
+            
+            if (isPartial) {
+                // 部分到货情况，显示警告提示
+                const shortage = orderQuantity - arrivedQuantity;
+                confirmMessage = `注意：本订单尚未完成全部配送！\n\n` +
+                    `订购数量：${orderQuantity} 本\n` +
+                    `已到货数量：${arrivedQuantity} 本\n` +
+                    `未到货数量：${shortage} 本\n\n` +
+                    `确定要现在发放吗？发放后将从库存中扣减 ${arrivedQuantity} 本教材，订单将彻底结束，剩余 ${shortage} 本将不再配送。`;
+            } else {
+                // 全部到货情况
+                confirmMessage = `确定要发放这个订单吗？\n\n发放后将从库存中扣减 ${arrivedQuantity} 本教材，订单将彻底结束。`;
+            }
+            
+            if (!confirmAction(confirmMessage)) {
+                return;
+            }
+            
+            try {
+                const result = await api.deliverPurchaseOrder(id);
+                if (result.code === 200) {
+                    showMessage(result.message || '发放成功', 'success');
+                    loadOrders();
+                } else {
+                    showMessage(result.message || '发放失败', 'error');
+                }
+            } catch (error) {
+                handleError(error, '发放失败');
+            }
+        }
+
+        // 根据权限和订单状态动态生成操作按钮
+        function getActionButtons(item) {
+            let buttons = [];
+            
+            // 审核按钮：只有管理员和仓库管理员可以审核待审核的订单
+            if (item.order_status === '待审核' && isAdminOrWarehouse()) {
+                buttons.push(`<button class="btn btn-sm btn-primary" onclick="approveOrder(${item.order_id})"><i class="fas fa-check"></i> 审核</button>`);
+            }
+            
+            // 入库按钮：只有管理员和仓库管理员可以在订单审核后入库
+            // 订单状态必须是：已审核、已订购、部分到货
+            const canStockIn = ['已审核', '已订购', '部分到货'].includes(item.order_status);
+            if (canStockIn && isAdminOrWarehouse()) {
+                const remaining = item.order_quantity - item.arrived_quantity;
+                if (remaining > 0) {
+                    buttons.push(`<button class="btn btn-sm btn-success" onclick="showStockInModal(${item.order_id}, '${item.order_no}', '${item.textbook_name || ''}', ${item.textbook_id}, ${item.order_quantity}, ${item.arrived_quantity})"><i class="fas fa-box"></i> 入库</button>`);
+                }
+            }
+            
+            // 发放按钮：只有管理员和仓库管理员可以在"部分到货"或"已到货"状态下发放
+            // "部分到货"状态发放时会提示未完成全部配送
+            const canDeliver = ['部分到货', '已到货'].includes(item.order_status);
+            if (canDeliver && isAdminOrWarehouse() && item.arrived_quantity > 0) {
+                const isPartial = item.order_status === '部分到货';
+                buttons.push(`<button class="btn btn-sm btn-warning" onclick="deliverOrder(${item.order_id}, ${item.arrived_quantity}, ${item.order_quantity}, ${isPartial})"><i class="fas fa-truck"></i> 发放</button>`);
+            }
+            
+            // 取消按钮：
+            // - 管理员和仓库管理员可以取消未完成订单（不包括已发放、已取消）
+            // - 教师可以取消自己或普通用户的待审核订单
+            // - 普通用户只能取消自己的待审核订单
+            const cannotCancel = ['已发放', '已取消'];
+            if (!cannotCancel.includes(item.order_status)) {
+                if (isAdminOrWarehouse()) {
+                    buttons.push(`<button class="btn btn-sm btn-danger" onclick="cancelOrder(${item.order_id})"><i class="fas fa-times"></i> 取消</button>`);
+                } else if (item.order_status === '待审核') {
+                    // 教师和普通用户只能取消待审核的订单，后端会进一步校验权限
+                    buttons.push(`<button class="btn btn-sm btn-danger" onclick="cancelOrder(${item.order_id})"><i class="fas fa-times"></i> 取消</button>`);
+                }
+            }
+            
+            // 已发放的订单显示完成标记
+            if (item.order_status === '已发放') {
+                buttons.push(`<span class="completed-mark"><i class="fas fa-check-circle"></i> 已完成</span>`);
+            }
+            
+            return buttons.length > 0 ? buttons.join(' ') : '<span class="view-only">-</span>';
+        }
+
+        // 显示入库模态框
+        function showStockInModal(orderId, orderNo, textbookName, textbookId, orderQuantity, arrivedQuantity) {
+            document.getElementById('stockIn_order_id').value = orderId;
+            document.getElementById('stockIn_textbook_id').value = textbookId;
+            document.getElementById('stockIn_order_no').value = orderNo;
+            document.getElementById('stockIn_textbook_name').value = textbookName;
+            document.getElementById('stockIn_order_info').value = `${orderQuantity} / ${arrivedQuantity}`;
+            
+            const remaining = orderQuantity - arrivedQuantity;
+            document.getElementById('stockIn_remaining').textContent = remaining;
+            document.getElementById('stockIn_quantity').value = remaining;
+            document.getElementById('stockIn_quantity').max = remaining;
+            document.getElementById('stockIn_date').valueAsDate = new Date();
+            document.getElementById('stockIn_quality').value = '合格';
+            document.getElementById('stockIn_remarks').value = '';
+            
+            showModal('stockInModal');
+        }
+
+        // 提交入库
+        async function submitStockIn() {
+            const orderId = parseInt(document.getElementById('stockIn_order_id').value);
+            const textbookId = parseInt(document.getElementById('stockIn_textbook_id').value);
+            const quantity = parseInt(document.getElementById('stockIn_quantity').value);
+            const remaining = parseInt(document.getElementById('stockIn_remaining').textContent);
+            
+            if (!quantity || quantity <= 0) {
+                showMessage('请输入有效的入库数量', 'error');
+                return;
+            }
+            
+            if (quantity > remaining) {
+                showMessage(`入库数量不能超过剩余数量（${remaining}）`, 'error');
+                return;
+            }
+            
+            const data = {
+                order_id: orderId,
+                textbook_id: textbookId,
+                stock_in_quantity: quantity,
+                stock_in_date: document.getElementById('stockIn_date').value,
+                warehouse_person: user.username,
+                quality_status: document.getElementById('stockIn_quality').value,
+                actual_quantity: quantity,
+                remarks: document.getElementById('stockIn_remarks').value || null
+            };
+            
+            try {
+                const result = await api.createStockIn(data);
+                if (result.code === 201) {
+                    showMessage('入库成功，库存已自动更新', 'success');
+                    hideModal('stockInModal');
+                    loadOrders();
+                } else {
+                    showMessage(result.message || '入库失败', 'error');
+                }
+            } catch (error) {
+                handleError(error, '入库失败');
+            }
+        }
+
+        loadAvailableUsers();
+        loadTextbooks();
+        loadOrders();
+        
+        // 应用权限控制
+        window.addEventListener('load', function() {
+            if (!canCreateOrder()) {
+                const addButton = document.querySelector('.page-header .btn-primary');
+                if (addButton) {
+                    addButton.style.opacity = '0.5';
+                    addButton.style.cursor = 'not-allowed';
+                    addButton.title = '您没有权限创建订单';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

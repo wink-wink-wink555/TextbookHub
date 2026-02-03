@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出版社管理 - 高校教材管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <h2>教材管理系统</h2>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <div class="user-details">
+                    <div class="user-name" id="userName">加载中...</div>
+                    <div class="user-role" id="userRole">-</div>
+                </div>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/dashboard"><i class="fas fa-home"></i> 仪表盘</a></li>
+                <li><a href="/textbooks"><i class="fas fa-book"></i> 教材管理</a></li>
+                <li><a href="/publishers" class="active"><i class="fas fa-building"></i> 出版社管理</a></li>
+                <li><a href="/orders"><i class="fas fa-clipboard-list"></i> 订单管理</a></li>
+                <li><a href="/statistics"><i class="fas fa-chart-bar"></i> 统计报表</a></li>
+                <li><a href="#" onclick="logout()" class="logout-link"><i class="fas fa-sign-out-alt"></i> 退出登录</a></li>
+            </ul>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1><i class="fas fa-building" style="margin-right: 12px; color: var(--primary-color);"></i>出版社管理</h1>
+                <button class="btn btn-primary" onclick="showAddModal()">
+                    <i class="fas fa-plus"></i> 添加出版社
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-list"></i> 出版社列表</h3>
+                    <span id="totalCount">共 0 家出版社</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>出版社名称</th>
+                                    <th>联系人</th>
+                                    <th>联系电话</th>
+                                    <th>邮箱</th>
+                                    <th>地址</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="publishersTable">
+                                <tr><td colspan="6" class="text-center">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="pagination" class="mt-20"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 添加/编辑模态框 -->
+    <div id="publisherModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle"><i class="fas fa-building"></i> 添加出版社</h3>
+                <span class="close" onclick="hideModal('publisherModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="publisherForm">
+                    <input type="hidden" id="publisherId">
+                    <div class="form-group">
+                        <label>出版社名称 <span class="required">*</span></label>
+                        <input type="text" id="publisher_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>联系人</label>
+                        <input type="text" id="contact_person" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>联系电话</label>
+                        <input type="tel" id="contact_phone" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="email" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>地址</label>
+                        <textarea id="address" class="form-control" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('publisherModal')">取消</button>
+                <button class="btn btn-primary" onclick="savePublisher()">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        if (!checkLogin()) window.location.href = '/';
+        
+        const user = getUserInfo();
+        if (user) {
+            document.getElementById('userName').textContent = user.real_name || user.username;
+            document.getElementById('userRole').textContent = user.role;
+            document.getElementById('userAvatar').textContent = (user.real_name || user.username).charAt(0);
+        }
+
+        let currentPage = 1;
+        const perPage = 15;
+
+        async function loadPublishers() {
+            try {
+                const result = await api.getPublishers(currentPage, perPage);
+                if (result.code === 200) {
+                    const { items, pagination } = result.data;
+                    document.getElementById('totalCount').textContent = `共 ${pagination.total} 家出版社`;
+                    
+                    const tbody = document.getElementById('publishersTable');
+                    if (items.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无数据</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = items.map(item => `
+                        <tr>
+                            <td><strong>${item.publisher_name}</strong></td>
+                            <td>${item.contact_person || '-'}</td>
+                            <td>${item.contact_phone || '-'}</td>
+                            <td>${item.email || '-'}</td>
+                            <td>${item.address || '-'}</td>
+                            <td>${getActionButtons(item)}</td>
+                        </tr>
+                    `).join('');
+
+                    const paginationDiv = document.getElementById('pagination');
+                    paginationDiv.innerHTML = '';
+                    if (pagination.pages > 1) {
+                        paginationDiv.appendChild(createPagination(pagination.page, pagination.pages, (page) => {
+                            currentPage = page;
+                            loadPublishers();
+                        }));
+                    }
+                }
+            } catch (error) {
+                handleError(error, '加载出版社列表失败');
+            }
+        }
+
+        function showAddModal() {
+            checkPermissionBeforeAction(
+                canManageBasicData,
+                () => {
+                    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-building"></i> 添加出版社';
+                    document.getElementById('publisherForm').reset();
+                    document.getElementById('publisherId').value = '';
+                    showModal('publisherModal');
+                },
+                '只有管理员可以添加出版社'
+            );
+        }
+
+        async function editPublisher(id) {
+            checkPermissionBeforeAction(
+                canManageBasicData,
+                async () => {
+                    try {
+                        const result = await api.getPublisher(id);
+                        if (result.code === 200) {
+                            const data = result.data;
+                            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit"></i> 编辑出版社';
+                            document.getElementById('publisherId').value = id;
+                            document.getElementById('publisher_name').value = data.publisher_name;
+                            document.getElementById('contact_person').value = data.contact_person || '';
+                            document.getElementById('contact_phone').value = data.contact_phone || '';
+                            document.getElementById('email').value = data.email || '';
+                            document.getElementById('address').value = data.address || '';
+                            showModal('publisherModal');
+                        }
+                    } catch (error) {
+                        handleError(error, '加载出版社信息失败');
+                    }
+                },
+                '只有管理员可以编辑出版社'
+            );
+        }
+
+        async function savePublisher() {
+            const id = document.getElementById('publisherId').value;
+            const data = {
+                publisher_name: document.getElementById('publisher_name').value,
+                contact_person: document.getElementById('contact_person').value || null,
+                contact_phone: document.getElementById('contact_phone').value || null,
+                email: document.getElementById('email').value || null,
+                address: document.getElementById('address').value || null
+            };
+
+            try {
+                const result = id ? await api.updatePublisher(id, data) : await api.createPublisher(data);
+                if (result.code === 200 || result.code === 201) {
+                    showMessage(id ? '更新成功' : '添加成功', 'success');
+                    hideModal('publisherModal');
+                    loadPublishers();
+                } else {
+                    showMessage(result.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                handleError(error, '保存失败');
+            }
+        }
+
+        async function deletePublisher(id, name) {
+            checkPermissionBeforeAction(
+                canManageBasicData,
+                async () => {
+                    if (!confirmAction(`确定要删除出版社"${name}"吗？`)) return;
+                    try {
+                        const result = await api.deletePublisher(id);
+                        if (result.code === 200) {
+                            showMessage('删除成功', 'success');
+                            loadPublishers();
+                        } else {
+                            showMessage(result.message || '删除失败', 'error');
+                        }
+                    } catch (error) {
+                        handleError(error, '删除失败');
+                    }
+                },
+                '只有管理员可以删除出版社'
+            );
+        }
+
+        // 根据权限动态生成操作按钮
+        function getActionButtons(item) {
+            if (!canManageBasicData()) {
+                return '<span class="view-only">查看</span>';
+            }
+            return `
+                <button class="btn btn-sm btn-secondary" onclick="editPublisher(${item.publisher_id})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deletePublisher(${item.publisher_id}, '${item.publisher_name}')"><i class="fas fa-trash"></i></button>
+            `;
+        }
+
+        loadPublishers();
+        
+        // 应用权限控制
+        window.addEventListener('load', function() {
+            if (!canManageBasicData()) {
+                const addButton = document.querySelector('.page-header .btn-primary');
+                if (addButton) {
+                    addButton.style.opacity = '0.5';
+                    addButton.style.cursor = 'not-allowed';
+                    addButton.title = '只有管理员可以添加出版社';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
